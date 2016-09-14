@@ -6,7 +6,7 @@ module.exports = function() {
 	var Chart = function(context, config) {
 		var me = this;
 		var helpers = Chart.helpers;
-		me.config = config || { 
+		me.config = config || {
 			data: {
 				datasets: []
 			}
@@ -52,9 +52,11 @@ module.exports = function() {
 		me.controller = new Chart.Controller(me);
 
 		// Always bind this so that if the responsive state changes we still work
+		var resizeTimeout;
 		helpers.addResizeListener(context.canvas.parentNode, function() {
 			if (me.controller && me.controller.config.options.responsive) {
-				me.controller.resize();
+				clearTimeout(resizeTimeout);
+				resizeTimeout = setTimeout(function() { me.controller.resize(); }, 60);
 			}
 		});
 
