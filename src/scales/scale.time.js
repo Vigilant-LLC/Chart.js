@@ -414,12 +414,12 @@ module.exports = function(Chart) {
 					var innerWidth = me.width - (me.paddingLeft + me.paddingRight);
 					var valueOffset = (innerWidth * decimal) + me.paddingLeft;
 
-					return me.left + Math.round(valueOffset);
+					return me.left + Math.floor(valueOffset);
 				} else {
 					var innerHeight = me.height - (me.paddingTop + me.paddingBottom);
 					var heightOffset = (innerHeight * decimal) + me.paddingTop;
 
-					return me.top + Math.round(heightOffset);
+					return me.top + Math.floor(heightOffset);
 				}
 			}
 		},

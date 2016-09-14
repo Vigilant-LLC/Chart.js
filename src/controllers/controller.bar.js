@@ -139,12 +139,30 @@ module.exports = function(Chart) {
 			}
 			var categoryWidth = tickWidth * xScale.options.categoryPercentage;
 			var categorySpacing = (tickWidth - (tickWidth * xScale.options.categoryPercentage)) / 2;
-			var fullBarWidth = categoryWidth / datasetCount;
+			var fullBarWidth = xScale.options.stacked ? categoryWidth : categoryWidth / datasetCount;
 
-			if (xScale.ticks.length !== me.chart.data.labels.length) {
-				var perc = xScale.ticks.length / me.chart.data.labels.length;
-				fullBarWidth = fullBarWidth * perc;
-			}
+		  if (xScale.ticks.length !== me.chart.data.labels.length) {
+		    var dataPos = [];
+		    for (var i = 0; i < meta.data.length; i++) {
+		      dataPos.push(xScale.getPixelForValue(null, meta.data[i]._index, meta.data[i]._datasetIndex, me.chart.isCombo));
+		    }
+
+		    dataPos.sort(function(a,b){
+		      return a-b;
+		    })
+
+		    var minDist;
+		    var tmpDist;
+		    for (var i = 1; i < dataPos.length; i++) {
+		      tmpDist = dataPos[i] - dataPos[i-1];
+		      if(!minDist || tmpDist < minDist) { minDist = tmpDist; }
+		    }
+
+		    if(fullBarWidth > minDist) { fullBarWidth = minDist; }
+
+		    categoryWidth = fullBarWidth;
+		    fullBarWidth = fullBarWidth / datasetCount;
+		  }
 
 			var barWidth = fullBarWidth * xScale.options.barPercentage;
 			var barSpacing = fullBarWidth - (fullBarWidth * xScale.options.barPercentage);
@@ -195,15 +213,16 @@ module.exports = function(Chart) {
 			leftTick -= me.chart.isCombo ? (ruler.tickWidth / 2) : 0;
 
 			if (xScale.options.stacked) {
-				return leftTick + (ruler.categoryWidth / 2) + ruler.categorySpacing;
+				console.log(Math.floor(leftTick + (ruler.categoryWidth / 2) + ruler.categorySpacing));
+				return Math.floor(leftTick + (ruler.categoryWidth / 2) + ruler.categorySpacing);
 			}
 
-			return leftTick +
+			return Math.floor(leftTick +
 				(ruler.barWidth / 2) +
 				ruler.categorySpacing +
 				(ruler.barWidth * barIndex) +
 				(ruler.barSpacing / 2) +
-				(ruler.barSpacing * barIndex);
+				(ruler.barSpacing * barIndex));
 		},
 
 		calculateBarY: function(index, datasetIndex) {
