@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 module.exports = function(Chart) {
 
@@ -6,12 +6,12 @@ module.exports = function(Chart) {
 
 	Chart.defaults.bar = {
 		hover: {
-			mode: "label"
+			mode: 'label'
 		},
 
 		scales: {
 			xAxes: [{
-				type: "category",
+				type: 'category',
 
 				// Specific to Bar Controller
 				categoryPercentage: 0.8,
@@ -23,7 +23,7 @@ module.exports = function(Chart) {
 				}
 			}],
 			yAxes: [{
-				type: "linear"
+				type: 'linear'
 			}]
 		}
 	};
@@ -251,9 +251,8 @@ module.exports = function(Chart) {
 
 				if (value < 0) {
 					return yScale.getPixelForValue(sumNeg + value);
-				} else {
-					return yScale.getPixelForValue(sumPos + value);
 				}
+				return yScale.getPixelForValue(sumPos + value);
 			}
 
 			return yScale.getPixelForValue(value);
@@ -300,17 +299,17 @@ module.exports = function(Chart) {
 	// it extends bar (like pie extends doughnut)
 	Chart.defaults.horizontalBar = {
 		hover: {
-			mode: "label"
+			mode: 'label'
 		},
 
 		scales: {
 			xAxes: [{
-				type: "linear",
-				position: "bottom"
+				type: 'linear',
+				position: 'bottom'
 			}],
 			yAxes: [{
-				position: "left",
-				type: "category",
+				position: 'left',
+				type: 'category',
 
 				// Specific to Horizontal Bar Controller
 				categoryPercentage: 0.8,
@@ -387,7 +386,7 @@ module.exports = function(Chart) {
 					borderWidth: custom.borderWidth ? custom.borderWidth : helpers.getValueAtIndexOrDefault(dataset.borderWidth, index, rectangleElementOptions.borderWidth)
 				},
 
-				draw: function () {
+				draw: function() {
 					var ctx = this._chart.ctx;
 					var vm = this._view;
 
@@ -428,8 +427,8 @@ module.exports = function(Chart) {
 						startCorner = 0;
 					}
 
-					function cornerAt(index) {
-						return corners[(startCorner + index) % 4];
+					function cornerAt(cornerIndex) {
+						return corners[(startCorner + cornerIndex) % 4];
 					}
 
 					// Draw rectangle from 'startCorner'
@@ -444,7 +443,7 @@ module.exports = function(Chart) {
 					}
 				},
 
-				inRange: function (mouseX, mouseY) {
+				inRange: function(mouseX, mouseY) {
 					var vm = this._view;
 					var inRange = false;
 
@@ -463,7 +462,7 @@ module.exports = function(Chart) {
 			rectangle.pivot();
 		},
 
-		calculateBarBase: function (datasetIndex, index) {
+		calculateBarBase: function(datasetIndex, index) {
 			var me = this;
 			var meta = me.getMeta();
 			var xScale = me.getScaleForId(meta.xAxisID);
@@ -489,7 +488,7 @@ module.exports = function(Chart) {
 			return xScale.getBasePixel();
 		},
 
-		getRuler: function (index) {
+		getRuler: function(index) {
 			var me = this;
 			var meta = me.getMeta();
 			var yScale = me.getScaleForId(meta.yAxisID);
@@ -525,7 +524,7 @@ module.exports = function(Chart) {
 			};
 		},
 
-		calculateBarHeight: function (index) {
+		calculateBarHeight: function(index) {
 			var me = this;
 			var yScale = me.getScaleForId(me.getMeta().yAxisID);
 			if (yScale.options.barThickness) {
@@ -535,7 +534,7 @@ module.exports = function(Chart) {
 			return yScale.options.stacked ? ruler.categoryHeight : ruler.barHeight;
 		},
 
-		calculateBarX: function (index, datasetIndex) {
+		calculateBarX: function(index, datasetIndex) {
 			var me = this;
 			var meta = me.getMeta();
 			var xScale = me.getScaleForId(meta.xAxisID);
@@ -561,15 +560,14 @@ module.exports = function(Chart) {
 
 				if (value < 0) {
 					return xScale.getPixelForValue(sumNeg + value);
-				} else {
-					return xScale.getPixelForValue(sumPos + value);
 				}
+				return xScale.getPixelForValue(sumPos + value);
 			}
 
 			return xScale.getPixelForValue(value);
 		},
 
-		calculateBarY: function (index, datasetIndex) {
+		calculateBarY: function(index, datasetIndex) {
 			var me = this;
 			var meta = me.getMeta();
 			var yScale = me.getScaleForId(meta.yAxisID);
