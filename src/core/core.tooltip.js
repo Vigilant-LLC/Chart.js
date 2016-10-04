@@ -7,7 +7,8 @@ module.exports = function(Chart) {
 	Chart.defaults.global.tooltips = {
 		enabled: true,
 		custom: null,
-		mode: 'single',
+		mode: 'nearest',
+		intersect: true,
 		backgroundColor: 'rgba(0,0,0,0.8)',
 		titleFontStyle: 'bold',
 		titleSpacing: 2,
@@ -354,7 +355,7 @@ module.exports = function(Chart) {
 				footerFontSize = vm.footerFontSize;
 
 			size.height += titleLineCount * titleFontSize; // Title Lines
-			size.height += (titleLineCount - 1) * vm.titleSpacing; // Title Line Spacing
+			size.height += titleLineCount ? (titleLineCount - 1) * vm.titleSpacing : 0; // Title Line Spacing
 			size.height += titleLineCount ? vm.titleMarginBottom : 0; // Title's bottom Margin
 			size.height += combinedBodyLength * bodyFontSize; // Body Lines
 			size.height += combinedBodyLength ? (combinedBodyLength - 1) * vm.bodySpacing : 0; // Body Line Spacing
