@@ -308,6 +308,9 @@ module.exports = function(Chart) {
 			distance: radialDistanceFromCenter
 		};
 	};
+	helpers.distanceBetweenPoints = function(pt1, pt2) {
+		return Math.sqrt(Math.pow(pt2.x - pt1.x, 2) + Math.pow(pt2.y - pt1.y, 2));
+	};
 	helpers.aliasPixel = function(pixelWidth) {
 		return (pixelWidth % 2 === 0) ? 0 : 0.5;
 	};
@@ -859,9 +862,6 @@ module.exports = function(Chart) {
 			// when destroy is called
 			chart.originalDevicePixelRatio = chart.originalDevicePixelRatio || pixelRatio;
 		}
-
-		canvas.style.width = width + 'px';
-		canvas.style.height = height + 'px';
 	};
 	// -- Canvas methods
 	helpers.clear = function(chart) {
@@ -958,46 +958,49 @@ module.exports = function(Chart) {
 	};
 	helpers.addResizeListener = function(node, callback) {
 		// Hide an iframe before the node
-		var hiddenIframe = document.createElement('iframe');
-		var hiddenIframeClass = 'chartjs-hidden-iframe';
+		var iframe = document.createElement('iframe');
 
-		if (hiddenIframe.classlist) {
-			// can use classlist
-			hiddenIframe.classlist.add(hiddenIframeClass);
-		} else {
-			hiddenIframe.setAttribute('class', hiddenIframeClass);
-		}
+		iframe.className = 'chartjs-hidden-iframe';
+		iframe.style.cssText =
+			'display:block;'+
+			'overflow:hidden;'+
+			'border:0;'+
+			'margin:0;'+
+			'top:0;'+
+			'left:0;'+
+			'bottom:0;'+
+			'right:0;'+
+			'height:100%;'+
+			'width:100%;'+
+			'position:absolute;'+
+			'pointer-events:none;'+
+			'z-index:-1;';
 
-		// Set the style
-		hiddenIframe.tabIndex = -1;
-		var style = hiddenIframe.style;
-		style.width = '100%';
-		style.display = 'block';
-		style.border = 0;
-		style.height = 0;
-		style.margin = 0;
-		style.position = 'absolute';
-		style.left = 0;
-		style.right = 0;
-		style.top = 0;
-		style.bottom = 0;
+		// Prevent the iframe to gain focus on tab.
+		// https://github.com/chartjs/Chart.js/issues/3090
+		iframe.tabIndex = -1;
 
 		// Insert the iframe so that contentWindow is available
-		node.insertBefore(hiddenIframe, node.firstChild);
+		node.insertBefore(iframe, node.firstChild);
 
-		(hiddenIframe.contentWindow || hiddenIframe).onresize = function() {
-			if (callback) {
-				return callback();
-			}
+		// Let's keep track of this added iframe and thus avoid DOM query when removing it.
+		node._chartjs = {
+			resizer: iframe
 		};
+
+		this.addEvent(iframe.contentWindow || iframe, 'resize', callback);
 	};
 	helpers.removeResizeListener = function(node) {
-		var hiddenIframe = node.querySelector('.chartjs-hidden-iframe');
-
-		// Remove the resize detect iframe
-		if (hiddenIframe) {
-			hiddenIframe.parentNode.removeChild(hiddenIframe);
+		if (!node || !node._chartjs) {
+			return;
 		}
+
+		var iframe = node._chartjs.resizer;
+		if (iframe) {
+			iframe.parentNode.removeChild(iframe);
+		}
+
+		delete node._chartjs;
 	};
 	helpers.isArray = Array.isArray?
 		function(obj) {
