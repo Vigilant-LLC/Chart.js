@@ -113,6 +113,36 @@ module.exports = function(Chart) {
 	}
 
 	/**
+	 * TODO(SB) Move this method in the upcoming core.platform class.
+	 */
+	function acquireContext(item, config) {
+		if (typeof item === 'string') {
+			item = document.getElementById(item);
+		} else if (item.length) {
+			// Support for array based queries (such as jQuery)
+			item = item[0];
+		}
+
+		if (item && item.canvas) {
+			// Support for any object associated to a canvas (including a context2d)
+			item = item.canvas;
+		}
+
+		if (item instanceof HTMLCanvasElement) {
+			// To prevent canvas fingerprinting, some add-ons undefine the getContext
+			// method, for example: https://github.com/kkapsner/CanvasBlocker
+			// https://github.com/chartjs/Chart.js/issues/2807
+			var context = item.getContext && item.getContext('2d');
+			if (context instanceof CanvasRenderingContext2D) {
+				initCanvas(item, config);
+				return context;
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Initializes the given config with global and chart default values.
 	 */
 	function initConfig(config) {
@@ -136,26 +166,28 @@ module.exports = function(Chart) {
 	 * @class Chart.Controller
 	 * The main controller of a chart.
 	 */
-	Chart.Controller = function(context, config, instance) {
+	Chart.Controller = function(item, config, instance) {
 		var me = this;
-		var canvas;
 
 		config = initConfig(config);
-		canvas = initCanvas(context.canvas, config);
+
+		var context = acquireContext(item, config);
+		var canvas = context && context.canvas;
+		var height = canvas && canvas.height;
+		var width = canvas && canvas.width;
 
 		instance.ctx = context;
 		instance.canvas = canvas;
 		instance.config = config;
-		instance.width = canvas.width;
-		instance.height = canvas.height;
-		instance.aspectRatio = canvas.width / canvas.height;
-
-		helpers.retinaScale(instance);
+		instance.width = width;
+		instance.height = height;
+		instance.aspectRatio = height? width / height : null;
 
 		me.id = helpers.uid();
 		me.chart = instance;
 		me.config = config;
 		me.options = config.options;
+		me._bufferedRender = false;
 
 		// Add the chart instance to the global namespace
 		Chart.instances[me.id] = me;
@@ -165,6 +197,17 @@ module.exports = function(Chart) {
 				return me.config.data;
 			}
 		});
+
+		if (!context || !canvas) {
+			// The given item is not a compatible context2d element, let's return before finalizing
+			// the chart initialization but after setting basic chart / controller properties that
+			// can help to figure out that the chart is not valid (e.g chart.canvas !== null);
+			// https://github.com/chartjs/Chart.js/issues/2807
+			console.error("Failed to create chart: can't acquire context from the given item");
+			return me;
+		}
+
+		helpers.retinaScale(instance);
 
 		// Responsiveness is currently based on the use of an iframe, however this method causes
 		// performance issues and could be troublesome when used with ad blockers. So make sure
@@ -403,7 +446,9 @@ module.exports = function(Chart) {
 			// Do this before render so that any plugins that need final scale updates can use it
 			Chart.plugins.notify('afterUpdate', [me]);
 
-			me.render(animationDuration, lazy);
+			if (!me._bufferedRender) {
+				me.render(animationDuration, lazy);
+			}
 		},
 
 		/**
@@ -590,7 +635,6 @@ module.exports = function(Chart) {
 			var meta, i, ilen;
 
 			me.stop();
-			me.clear();
 
 			// dataset controllers need to cleanup associated data
 			for (i = 0, ilen = me.data.datasets.length; i < ilen; ++i) {
@@ -604,8 +648,10 @@ module.exports = function(Chart) {
 			if (canvas) {
 				helpers.unbindEvents(me, me.events);
 				helpers.removeResizeListener(canvas.parentNode);
+				helpers.clear(me.chart);
 				releaseCanvas(canvas);
 				me.chart.canvas = null;
+				me.chart.ctx = null;
 			}
 
 			// if we scaled the canvas in response to a devicePixelRatio !== 1, we need to undo that transform here
@@ -630,6 +676,7 @@ module.exports = function(Chart) {
 				_data: me.data,
 				_options: me.options.tooltips
 			}, me);
+			me.tooltip.initialize();
 		},
 
 		bindEvents: function() {
@@ -643,20 +690,6 @@ module.exports = function(Chart) {
 			var method = enabled? 'setHoverStyle' : 'removeHoverStyle';
 			var element, i, ilen;
 
-			switch (mode) {
-			case 'single':
-				elements = [elements[0]];
-				break;
-			case 'label':
-			case 'dataset':
-			case 'x-axis':
-				// elements = elements;
-				break;
-			default:
-				// unsupported mode
-				return;
-			}
-
 			for (i=0, ilen=elements.length; i<ilen; ++i) {
 				element = elements[i];
 				if (element) {
@@ -667,30 +700,52 @@ module.exports = function(Chart) {
 
 		eventHandler: function(e) {
 			var me = this;
-			var tooltip = me.tooltip;
+			var hoverOptions = me.options.hover;
+
+			// Buffer any update calls so that renders do not occur
+			me._bufferedRender = true;
+
+			var changed = me.handleEvent(e);
+			changed |= me.legend.handleEvent(e);
+			changed |= me.tooltip.handleEvent(e);
+
+			if (changed && !me.animating) {
+				// If entering, leaving, or changing elements, animate the change via pivot
+				me.stop();
+
+				// We only need to render at this point. Updating will cause scales to be
+				// recomputed generating flicker & using more memory than necessary.
+				me.render(hoverOptions.animationDuration, true);
+			}
+
+			me._bufferedRender = false;
+			return me;
+		},
+
+		/**
+		 * Handle an event
+		 * @private
+		 * param e {Event} the event to handle
+		 * @return {Boolean} true if the chart needs to re-render
+		 */
+		handleEvent: function(e) {
+			var me = this;
 			var options = me.options || {};
 			var hoverOptions = options.hover;
-			var tooltipsOptions = options.tooltips;
+			var changed = false;
 
 			me.lastActive = me.lastActive || [];
-			me.lastTooltipActive = me.lastTooltipActive || [];
 
 			// Find Active Elements for hover and tooltips
 			if (e.type === 'mouseout') {
 				me.active = [];
-				me.tooltipActive = [];
 			} else {
 				me.active = me.getElementsAtEventForMode(e, hoverOptions.mode, hoverOptions);
-				me.tooltipActive = me.getElementsAtEventForMode(e, tooltipsOptions.mode, tooltipsOptions);
 			}
 
 			// On Hover hook
 			if (hoverOptions.onHover) {
 				hoverOptions.onHover.call(me, me.active);
-			}
-
-			if (me.legend && me.legend.handleEvent) {
-				me.legend.handleEvent(e);
 			}
 
 			if (e.type === 'mouseup' || e.type === 'click') {
@@ -709,37 +764,12 @@ module.exports = function(Chart) {
 				me.updateHoverStyle(me.active, hoverOptions.mode, true);
 			}
 
-			// Built in Tooltips
-			if (tooltipsOptions.enabled || tooltipsOptions.custom) {
-				tooltip.initialize();
-				tooltip._active = me.tooltipActive;
-				tooltip.update(true);
-			}
-
-			// Hover animations
-			tooltip.pivot();
-
-			if (!me.animating) {
-				// If entering, leaving, or changing elements, animate the change via pivot
-				if (!helpers.arrayEquals(me.active, me.lastActive) ||
-					!helpers.arrayEquals(me.tooltipActive, me.lastTooltipActive)) {
-
-					me.stop();
-
-					if (tooltipsOptions.enabled || tooltipsOptions.custom) {
-						tooltip.update(true);
-					}
-
-					// We only need to render at this point. Updating will cause scales to be
-					// recomputed generating flicker & using more memory than necessary.
-					me.render(hoverOptions.animationDuration, true);
-				}
-			}
+			changed = !helpers.arrayEquals(me.active, me.lastActive);
 
 			// Remember Last Actives
 			me.lastActive = me.active;
-			me.lastTooltipActive = me.tooltipActive;
-			return me;
+
+			return changed;
 		}
 	});
 };
