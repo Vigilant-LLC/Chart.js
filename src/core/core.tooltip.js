@@ -118,7 +118,9 @@ module.exports = function(Chart) {
 			xLabel: xScale ? xScale.getLabelForIndex(index, datasetIndex) : '',
 			yLabel: yScale ? yScale.getLabelForIndex(index, datasetIndex) : '',
 			index: index,
-			datasetIndex: datasetIndex
+			datasetIndex: datasetIndex,
+			x: element._model.x,
+			y: element._model.y
 		};
 	}
 
@@ -465,14 +467,18 @@ module.exports = function(Chart) {
 				width: existingModel.width,
 				height: existingModel.height
 			};
+			var tooltipPosition = {
+				x: existingModel.caretX,
+				y: existingModel.caretY
+			};
 
 			var i, len;
 
 			if (active.length) {
 				model.opacity = 1;
 
-				var labelColors = [],
-					tooltipPosition = Chart.Tooltip.positioners[opts.position](active, me._eventPosition);
+				var labelColors = [];
+				tooltipPosition = Chart.Tooltip.positioners[opts.position](active, me._eventPosition);
 
 				var tooltipItems = [];
 				for (i = 0, len = active.length; i < len; ++i) {
@@ -504,6 +510,9 @@ module.exports = function(Chart) {
 				model.caretPadding = helpers.getValueOrDefault(tooltipPosition.padding, 2);
 				model.labelColors = labelColors;
 
+				// data points
+				model.dataPoints = tooltipItems;
+
 				// We need to determine alignment of the tooltip
 				tooltipSize = getTooltipSize(this, model);
 				alignment = determineAlignment(this, tooltipSize);
@@ -519,6 +528,10 @@ module.exports = function(Chart) {
 			model.y = backgroundPoint.y;
 			model.width = tooltipSize.width;
 			model.height = tooltipSize.height;
+
+			// Point where the caret on the tooltip points to
+			model.caretX = tooltipPosition.x;
+			model.caretY = tooltipPosition.y;
 
 			me._model = model;
 
