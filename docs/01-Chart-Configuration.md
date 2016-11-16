@@ -154,6 +154,7 @@ fontColor | Color | "#666" | Font color inherited from global configuration
 fontFamily | String | "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif" | Font family inherited from global configuration
 padding | Number | 10 | Padding between rows of colored boxes
 generateLabels: | Function | `function(chart) {  }` | Generates legend items for each thing in the legend. Default implementation returns the text + styling for the color box. See [Legend Item](#chart-configuration-legend-item-interface) for details.
+filter | Function | null | Filters legend items out of the legend. Receives 2 parameters, a [Legend Item](#chart-configuration-legend-item-interface) and the chart data
 usePointStyle | Boolean | false | Label style will match corresponding point style (size is based on fontSize, boxWidth is not used in this case).
 
 #### Legend Item Interface
@@ -225,6 +226,7 @@ mode | String | 'nearest' | Sets which elements appear in the tooltip. See [Inte
 intersect | Boolean | true | if true, the tooltip mode applies only when the mouse position intersects with an element. If false, the mode will be applied at all times.
 position | String | 'average' | The mode for positioning the tooltip. 'average' mode will place the tooltip at the average position of the items displayed in the tooltip. 'nearest' will place the tooltip at the position of the element closest to the event position. New modes can be defined by adding functions to the Chart.Tooltip.positioners map.
 itemSort | Function | undefined | Allows sorting of [tooltip items](#chart-configuration-tooltip-item-interface). Must implement at minimum a function that can be passed to [Array.prototype.sort](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort).  This function can also accept a third parameter that is the data object passed to the chart.
+filter | Function | undefined | Allows filtering of [tooltip items](#chart-configuration-tooltip-item-interface). Must implement at minimum a function that can be passed to [Array.prototype.filter](https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Array/filter). This function can also accept a second parameter that is the data object passed to the chart.
 backgroundColor | Color | 'rgba(0,0,0,0.8)' | Background color of the tooltip
 titleFontFamily | String | "'Helvetica Neue', 'Helvetica', 'Arial', sans-serif" | Font family for tooltip title inherited from global font family
 titleFontSize | Number | 12 | Font size for tooltip title inherited from global font size
@@ -265,7 +267,7 @@ afterTitle | `Array[tooltipItem], data` | Text to render after the title
 beforeBody | `Array[tooltipItem], data` | Text to render before the body section
 beforeLabel | `tooltipItem, data` | Text to render before an individual label
 label | `tooltipItem, data` | Text to render for an individual item in the tooltip
-labelColor | `tooltipItem, chartInstace` | Returns the colors to render for the tooltip item. Return as an object containing two parameters: `borderColor` and `backgroundColor`.
+labelColor | `tooltipItem, chartInstance` | Returns the colors to render for the tooltip item. Return as an object containing two parameters: `borderColor` and `backgroundColor`.
 afterLabel | `tooltipItem, data` | Text to render after an individual label
 afterBody | `Array[tooltipItem], data` | Text to render after the body section
 beforeFooter | `Array[tooltipItem], data` | Text to render before the footer section
@@ -305,7 +307,7 @@ The hover configuration is passed into the `options.hover` namespace. The global
 
 Name | Type | Default | Description
 --- | --- | --- | ---
-mode | String | 'naerest' | Sets which elements appear in the tooltip. See [Interaction Modes](#interaction-modes) for details
+mode | String | 'nearest' | Sets which elements appear in the tooltip. See [Interaction Modes](#interaction-modes) for details
 intersect | Boolean | true | if true, the hover mode only applies when the mouse position intersects an item on the chart
 animationDuration | Number | 400 | Duration in milliseconds it takes to animate hover style changes
 onHover | Function | null | Called when any of the events fire. Called in the context of the chart and passed an array of active elements (bars, points, etc)
@@ -340,9 +342,9 @@ onComplete | Function | none | Callback called at the end of an animation. Passe
 
 #### Animation Callbacks
 
-The `onProgress` and `onComplete` callbacks are useful for synchronizing an external draw to the chart animation. The callback is passed an object that implements the following interface. An example usage of these callbacks can be found on [Github](https://github.com/chartjs/Chart.js/blob/master/samples/AnimationCallbacks/progress-bar.html). This sample displays a progress bar showing how far along the animation is.
+The `onProgress` and `onComplete` callbacks are useful for synchronizing an external draw to the chart animation. The callback is passed an object that implements the following interface. An example usage of these callbacks can be found on [Github](https://github.com/chartjs/Chart.js/blob/master/samples/animation/progress-bar.html). This sample displays a progress bar showing how far along the animation is.
 
-```javscript
+```javascript
 {
     // Chart object
     chartInstance,

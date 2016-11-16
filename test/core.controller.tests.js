@@ -1,7 +1,16 @@
 describe('Chart.Controller', function() {
 
-	function processResizeEvent(chart, callback) {
-		setTimeout(callback, 100);
+	function waitForResize(chart, callback) {
+		var resizer = chart.chart.canvas.parentNode._chartjs.resizer;
+		var content = resizer.contentWindow || resizer;
+		var state = content.document.readyState || 'complete';
+		var handler = function() {
+			Chart.helpers.removeEvent(content, 'load', handler);
+			Chart.helpers.removeEvent(content, 'resize', handler);
+			setTimeout(callback, 50);
+		};
+
+		Chart.helpers.addEvent(content, state !== 'complete'? 'load' : 'resize', handler);
 	}
 
 	describe('context acquisition', function() {
@@ -84,7 +93,7 @@ describe('Chart.Controller', function() {
 			expect(data.datasets.length).toBe(0);
 		});
 
-		it('should NOT alter config.data references', function() {
+		it('should not alter config.data references', function() {
 			var ds0 = {data: [10, 11, 12, 13]};
 			var ds1 = {data: [20, 21, 22, 23]};
 			var datasets = [ds0, ds1];
@@ -209,7 +218,7 @@ describe('Chart.Controller', function() {
 			});
 		});
 
-		it('should NOT apply aspect ratio when height specified', function() {
+		it('should not apply aspect ratio when height specified', function() {
 			var chart = acquireChart({
 				options: {
 					responsive: false,
@@ -301,7 +310,7 @@ describe('Chart.Controller', function() {
 			});
 		});
 
-		it('should NOT inject the resizer element', function() {
+		it('should not inject the resizer element', function() {
 			var chart = acquireChart({
 				options: {
 					responsive: false
@@ -358,14 +367,14 @@ describe('Chart.Controller', function() {
 
 			var wrapper = chart.chart.canvas.parentNode;
 			wrapper.style.width = '455px';
-			processResizeEvent(chart, function() {
+			waitForResize(chart, function() {
 				expect(chart).toBeChartOfSize({
 					dw: 455, dh: 350,
 					rw: 455, rh: 350,
 				});
 
 				wrapper.style.width = '150px';
-				processResizeEvent(chart, function() {
+				waitForResize(chart, function() {
 					expect(chart).toBeChartOfSize({
 						dw: 150, dh: 350,
 						rw: 150, rh: 350,
@@ -398,14 +407,14 @@ describe('Chart.Controller', function() {
 
 			var wrapper = chart.chart.canvas.parentNode;
 			wrapper.style.height = '455px';
-			processResizeEvent(chart, function() {
+			waitForResize(chart, function() {
 				expect(chart).toBeChartOfSize({
 					dw: 300, dh: 455,
 					rw: 300, rh: 455,
 				});
 
 				wrapper.style.height = '150px';
-				processResizeEvent(chart, function() {
+				waitForResize(chart, function() {
 					expect(chart).toBeChartOfSize({
 						dw: 300, dh: 150,
 						rw: 300, rh: 150,
@@ -416,7 +425,7 @@ describe('Chart.Controller', function() {
 			});
 		});
 
-		it('should NOT include parent padding when resizing the canvas', function(done) {
+		it('should not include parent padding when resizing the canvas', function(done) {
 			var chart = acquireChart({
 				type: 'line',
 				options: {
@@ -440,7 +449,7 @@ describe('Chart.Controller', function() {
 			var wrapper = chart.chart.canvas.parentNode;
 			wrapper.style.height = '355px';
 			wrapper.style.width = '455px';
-			processResizeEvent(chart, function() {
+			waitForResize(chart, function() {
 				expect(chart).toBeChartOfSize({
 					dw: 455, dh: 355,
 					rw: 455, rh: 355,
@@ -467,7 +476,7 @@ describe('Chart.Controller', function() {
 
 			var canvas = chart.chart.canvas;
 			canvas.style.display = 'block';
-			processResizeEvent(chart, function() {
+			waitForResize(chart, function() {
 				expect(chart).toBeChartOfSize({
 					dw: 320, dh: 350,
 					rw: 320, rh: 350,
@@ -494,13 +503,61 @@ describe('Chart.Controller', function() {
 
 			var wrapper = chart.chart.canvas.parentNode;
 			wrapper.style.display = 'block';
-			processResizeEvent(chart, function() {
+			waitForResize(chart, function() {
 				expect(chart).toBeChartOfSize({
 					dw: 460, dh: 380,
 					rw: 460, rh: 380,
 				});
 
 				done();
+			});
+		});
+
+		// https://github.com/chartjs/Chart.js/issues/3521
+		it('should resize the canvas after the wrapper has been re-attached to the DOM', function(done) {
+			var chart = acquireChart({
+				options: {
+					responsive: true,
+					maintainAspectRatio: false
+				}
+			}, {
+				canvas: {
+					style: ''
+				},
+				wrapper: {
+					style: 'width: 320px; height: 350px'
+				}
+			});
+
+			expect(chart).toBeChartOfSize({
+				dw: 320, dh: 350,
+				rw: 320, rh: 350,
+			});
+
+			var wrapper = chart.chart.canvas.parentNode;
+			var parent = wrapper.parentNode;
+			parent.removeChild(wrapper);
+			parent.appendChild(wrapper);
+			wrapper.style.height = '355px';
+
+			waitForResize(chart, function() {
+				expect(chart).toBeChartOfSize({
+					dw: 320, dh: 355,
+					rw: 320, rh: 355,
+				});
+
+				parent.removeChild(wrapper);
+				wrapper.style.width = '455px';
+				parent.appendChild(wrapper);
+
+				waitForResize(chart, function() {
+					expect(chart).toBeChartOfSize({
+						dw: 455, dh: 355,
+						rw: 455, rh: 355,
+					});
+
+					done();
+				});
 			});
 		});
 	});
@@ -527,7 +584,7 @@ describe('Chart.Controller', function() {
 			});
 		});
 
-		it('should resize the canvas with correct apect ratio when parent width changes', function(done) {
+		it('should resize the canvas with correct aspect ratio when parent width changes', function(done) {
 			var chart = acquireChart({
 				type: 'line', // AR == 2
 				options: {
@@ -550,14 +607,14 @@ describe('Chart.Controller', function() {
 
 			var wrapper = chart.chart.canvas.parentNode;
 			wrapper.style.width = '450px';
-			processResizeEvent(chart, function() {
+			waitForResize(chart, function() {
 				expect(chart).toBeChartOfSize({
 					dw: 450, dh: 225,
 					rw: 450, rh: 225,
 				});
 
 				wrapper.style.width = '150px';
-				processResizeEvent(chart, function() {
+				waitForResize(chart, function() {
 					expect(chart).toBeChartOfSize({
 						dw: 150, dh: 75,
 						rw: 150, rh: 75,
@@ -568,7 +625,7 @@ describe('Chart.Controller', function() {
 			});
 		});
 
-		it('should NOT resize the canvas when parent height changes', function(done) {
+		it('should not resize the canvas when parent height changes', function(done) {
 			var chart = acquireChart({
 				options: {
 					responsive: true,
@@ -590,14 +647,14 @@ describe('Chart.Controller', function() {
 
 			var wrapper = chart.chart.canvas.parentNode;
 			wrapper.style.height = '455px';
-			processResizeEvent(chart, function() {
+			waitForResize(chart, function() {
 				expect(chart).toBeChartOfSize({
 					dw: 320, dh: 160,
 					rw: 320, rh: 160,
 				});
 
 				wrapper.style.height = '150px';
-				processResizeEvent(chart, function() {
+				waitForResize(chart, function() {
 					expect(chart).toBeChartOfSize({
 						dw: 320, dh: 160,
 						rw: 320, rh: 160,
@@ -609,8 +666,81 @@ describe('Chart.Controller', function() {
 		});
 	});
 
+	describe('Retina scale (a.k.a. device pixel ratio)', function() {
+		beforeEach(function() {
+			this.devicePixelRatio = window.devicePixelRatio;
+			window.devicePixelRatio = 3;
+		});
+
+		afterEach(function() {
+			window.devicePixelRatio = this.devicePixelRatio;
+		});
+
+		// see https://github.com/chartjs/Chart.js/issues/3575
+		it ('should scale the render size but not the "implicit" display size', function() {
+			var chart = acquireChart({
+				options: {
+					responsive: false
+				}
+			}, {
+				canvas: {
+					width: 320,
+					height: 240,
+				}
+			});
+
+			expect(chart).toBeChartOfSize({
+				dw: 320, dh: 240,
+				rw: 960, rh: 720,
+			});
+		});
+
+		it ('should scale the render size but not the "explicit" display size', function() {
+			var chart = acquireChart({
+				options: {
+					responsive: false
+				}
+			}, {
+				canvas: {
+					style: 'width: 320px; height: 240px'
+				}
+			});
+
+			expect(chart).toBeChartOfSize({
+				dw: 320, dh: 240,
+				rw: 960, rh: 720,
+			});
+		});
+	});
+
 	describe('controller.destroy', function() {
-		it('should restore canvas (and context) initial values', function(done) {
+		it('should reset context to default values', function() {
+			var chart = acquireChart({});
+			var context = chart.chart.ctx;
+
+			chart.destroy();
+
+			// https://www.w3.org/TR/2dcontext/#conformance-requirements
+			Chart.helpers.each({
+				fillStyle: '#000000',
+				font: '10px sans-serif',
+				lineJoin: 'miter',
+				lineCap: 'butt',
+				lineWidth: 1,
+				miterLimit: 10,
+				shadowBlur: 0,
+				shadowColor: 'rgba(0, 0, 0, 0)',
+				shadowOffsetX: 0,
+				shadowOffsetY: 0,
+				strokeStyle: '#000000',
+				textAlign: 'start',
+				textBaseline: 'alphabetic'
+			}, function(value, key) {
+				expect(context[key]).toBe(value);
+			});
+		});
+
+		it('should restore canvas initial values', function(done) {
 			var chart = acquireChart({
 				options: {
 					responsive: true,
@@ -629,7 +759,7 @@ describe('Chart.Controller', function() {
 			var canvas = chart.chart.canvas;
 			var wrapper = canvas.parentNode;
 			wrapper.style.width = '475px';
-			processResizeEvent(chart, function() {
+			waitForResize(chart, function() {
 				expect(chart).toBeChartOfSize({
 					dw: 475, dh: 450,
 					rw: 475, rh: 450,
