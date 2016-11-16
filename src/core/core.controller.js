@@ -109,6 +109,12 @@ module.exports = function(Chart) {
 			canvas.style[key] = value;
 		});
 
+		// The canvas render size might have been changed (and thus the state stack discarded),
+		// we can't use save() and restore() to restore the initial state. So make sure that at
+		// least the canvas context is reset to the default state by setting the canvas width.
+		// https://www.w3.org/TR/2011/WD-html5-20110525/the-canvas-element.html
+		canvas.width = canvas.width;
+
 		delete canvas._chartjs;
 	}
 
@@ -258,7 +264,7 @@ module.exports = function(Chart) {
 		},
 
 		stop: function() {
-			// Stops any current animation loop occuring
+			// Stops any current animation loop occurring
 			Chart.animationService.cancelAnimation(this);
 			return this;
 		},
@@ -281,11 +287,10 @@ module.exports = function(Chart) {
 
 			canvas.width = chart.width = newWidth;
 			canvas.height = chart.height = newHeight;
-
-			helpers.retinaScale(chart);
-
 			canvas.style.width = newWidth + 'px';
 			canvas.style.height = newHeight + 'px';
+
+			helpers.retinaScale(chart);
 
 			// Notify any plugins about the resize
 			var newSize = {width: newWidth, height: newHeight};
@@ -447,7 +452,7 @@ module.exports = function(Chart) {
 
 			Chart.layoutService.update(me, me.chart.width, me.chart.height);
 
-			// Apply changes to the dataets that require the scales to have been calculated i.e BorderColor chages
+			// Apply changes to the datasets that require the scales to have been calculated i.e BorderColor changes
 			Chart.plugins.notify('afterScaleUpdate', [me]);
 
 			// Can only reset the new controllers after the scales have been updated
@@ -460,7 +465,12 @@ module.exports = function(Chart) {
 			// Do this before render so that any plugins that need final scale updates can use it
 			Chart.plugins.notify('afterUpdate', [me]);
 
-			if (!me._bufferedRender) {
+			if (me._bufferedRender) {
+				me._bufferedRequest = {
+					lazy: lazy,
+					duration: animationDuration
+				};
+			} else {
 				me.render(animationDuration, lazy);
 			}
 		},
@@ -668,11 +678,6 @@ module.exports = function(Chart) {
 				me.chart.ctx = null;
 			}
 
-			// if we scaled the canvas in response to a devicePixelRatio !== 1, we need to undo that transform here
-			if (me.chart.originalDevicePixelRatio !== undefined) {
-				me.chart.ctx.scale(1 / me.chart.originalDevicePixelRatio, 1 / me.chart.originalDevicePixelRatio);
-			}
-
 			Chart.plugins.notify('destroy', [me]);
 
 			delete Chart.instances[me.id];
@@ -714,16 +719,23 @@ module.exports = function(Chart) {
 
 		eventHandler: function(e) {
 			var me = this;
+			var legend = me.legend;
+			var tooltip = me.tooltip;
 			var hoverOptions = me.options.hover;
 
 			// Buffer any update calls so that renders do not occur
 			me._bufferedRender = true;
+			me._bufferedRequest = null;
 
 			var changed = me.handleEvent(e);
-			changed |= me.legend.handleEvent(e);
-			changed |= me.tooltip.handleEvent(e);
+			changed |= legend && legend.handleEvent(e);
+			changed |= tooltip && tooltip.handleEvent(e);
 
-			if (changed && !me.animating) {
+			var bufferedRequest = me._bufferedRequest;
+			if (bufferedRequest) {
+				// If we have an update that was triggered, we need to do a normal render
+				me.render(bufferedRequest.duration, bufferedRequest.lazy);
+			} else if (changed && !me.animating) {
 				// If entering, leaving, or changing elements, animate the change via pivot
 				me.stop();
 
@@ -733,6 +745,8 @@ module.exports = function(Chart) {
 			}
 
 			me._bufferedRender = false;
+			me._bufferedRequest = null;
+
 			return me;
 		},
 

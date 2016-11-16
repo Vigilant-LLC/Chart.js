@@ -105,7 +105,7 @@ module.exports = function(Chart) {
 		return base;
 	}
 
-	// Private helper to create a tooltip iteam model
+	// Private helper to create a tooltip item model
 	// @param element : the chart element (point, arc, bar) to create the tooltip item for
 	// @return : new tooltip item
 	function createTooltipItem(element) {
@@ -317,7 +317,7 @@ module.exports = function(Chart) {
 	}
 
 	/**
-	 * @Helper to get the location a tooltiop needs to be placed at given the initial position (via the vm) and the size and alignment
+	 * @Helper to get the location a tooltip needs to be placed at given the initial position (via the vm) and the size and alignment
 	 */
 	function getBackgroundPoint(vm, size, alignment) {
 		// Background Position
@@ -483,6 +483,13 @@ module.exports = function(Chart) {
 				var tooltipItems = [];
 				for (i = 0, len = active.length; i < len; ++i) {
 					tooltipItems.push(createTooltipItem(active[i]));
+				}
+
+				// If the user provided a filter function, use it to modify the tooltip items
+				if (opts.filter) {
+					tooltipItems = tooltipItems.filter(function(a) {
+						return opts.filter(a, data);
+					});
 				}
 
 				// If the user provided a sorting function, use it to modify the tooltip items
