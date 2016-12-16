@@ -169,6 +169,26 @@ module.exports = function(Chart) {
 	}
 
 	/**
+	 * Updates the config of the chart
+	 * @param chart {Chart.Controller} chart to update the options for
+	 */
+	function updateConfig(chart) {
+		var newOptions = chart.options;
+
+		// Update Scale(s) with options
+		if (newOptions.scale) {
+			chart.scale.options = newOptions.scale;
+		} else if (newOptions.scales) {
+			newOptions.scales.xAxes.concat(newOptions.scales.yAxes).forEach(function(scaleOptions) {
+				chart.scales[scaleOptions.id].options = scaleOptions;
+			});
+		}
+
+		// Tooltip
+		chart.tooltip._options = newOptions.tooltips;
+	}
+
+	/**
 	 * @class Chart.Controller
 	 * The main controller of a chart.
 	 */
@@ -292,16 +312,16 @@ module.exports = function(Chart) {
 
 			helpers.retinaScale(chart);
 
-			// Notify any plugins about the resize
-			var newSize = {width: newWidth, height: newHeight};
-			Chart.plugins.notify('resize', [me, newSize]);
-
-			// Notify of resize
-			if (me.options.onResize) {
-				me.options.onResize(me, newSize);
-			}
-
 			if (!silent) {
+				// Notify any plugins about the resize
+				var newSize = {width: newWidth, height: newHeight};
+				Chart.plugins.notify('resize', [me, newSize]);
+
+				// Notify of resize
+				if (me.options.onResize) {
+					me.options.onResize(me, newSize);
+				}
+
 				me.stop();
 				me.update(me.options.responsiveAnimationDuration);
 			}
@@ -435,8 +455,11 @@ module.exports = function(Chart) {
 			this.tooltip.initialize();
 		},
 
+
 		update: function(animationDuration, lazy) {
 			var me = this;
+
+			updateConfig(me);
 			Chart.plugins.notify('beforeUpdate', [me]);
 
 			// In case the entire data object changed
@@ -773,7 +796,7 @@ module.exports = function(Chart) {
 
 			// On Hover hook
 			if (hoverOptions.onHover) {
-				hoverOptions.onHover.call(me, me.active);
+				hoverOptions.onHover.call(me, e, me.active);
 			}
 
 			if (e.type === 'mouseup' || e.type === 'click') {

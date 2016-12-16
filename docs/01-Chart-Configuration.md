@@ -81,7 +81,7 @@ responsive | Boolean | true | Resizes the chart canvas when its container does.
 responsiveAnimationDuration | Number | 0 | Duration in milliseconds it takes to animate to new size after a resize event.
 maintainAspectRatio | Boolean | true | Maintain the original canvas aspect ratio `(width / height)` when resizing
 events | Array[String] | `["mousemove", "mouseout", "click", "touchstart", "touchmove", "touchend"]` | Events that the chart should listen to for tooltips and hovering
-onClick | Function | null | Called if the event is of type 'mouseup' or 'click'. Called in the context of the chart and passed an array of active elements
+onClick | Function | null | Called if the event is of type 'mouseup' or 'click'. Called in the context of the chart and passed the event and an array of active elements
 legendCallback | Function | ` function (chart) { }` | Function to generate a legend. Receives the chart object to generate a legend from. Default implementation returns an HTML string.
 onResize | Function | null | Called when a resize occurs. Gets passed two arguments: the chart instance and the new size.
 
@@ -310,7 +310,7 @@ Name | Type | Default | Description
 mode | String | 'nearest' | Sets which elements appear in the tooltip. See [Interaction Modes](#interaction-modes) for details
 intersect | Boolean | true | if true, the hover mode only applies when the mouse position intersects an item on the chart
 animationDuration | Number | 400 | Duration in milliseconds it takes to animate hover style changes
-onHover | Function | null | Called when any of the events fire. Called in the context of the chart and passed an array of active elements (bars, points, etc)
+onHover | Function | null | Called when any of the events fire. Called in the context of the chart and passed the event and an array of active elements (bars, points, etc)
 
 ### Interaction Modes
 When configuring interaction with the graph via hover or tooltips, a number of different modes are available.
@@ -324,7 +324,7 @@ nearest | Gets the item that is nearest to the point. The nearest item is determ
 single (deprecated) | Finds the first item that intersects the point and returns it. Behaves like 'nearest' mode with intersect = true.
 label (deprecated) | See `'index'` mode
 index | Finds item at the same index. If the `intersect` setting is true, the first intersecting item is used to determine the index in the data. If `intersect` false the nearest item is used to determine the index. 
-x-axis (deprecated) | Behaves like `'index'` mode with `intersect = true`
+x-axis (deprecated) | Behaves like `'index'` mode with `intersect = false`
 dataset | Finds items in the same dataset. If the `intersect` setting is true, the first intersecting item is used to determine the index in the data. If `intersect` false the nearest item is used to determine the index.
 x | Returns all items that would intersect based on the `X` coordinate of the position only. Would be useful for a vertical cursor implementation. Note that this only applies to cartesian charts
 y | Returns all items that would intersect based on the `Y` coordinate of the position. This would be useful for a horizontal cursor implementation. Note that this only applies to cartesian charts.
